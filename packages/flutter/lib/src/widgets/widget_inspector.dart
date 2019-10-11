@@ -1545,6 +1545,11 @@ mixin WidgetInspectorService {
     return _nodesToJson(node == null ? const <DiagnosticsNode>[] : _getChildrenFiltered(node, delegate), delegate, parent: node);
   }
 
+  bool _isError(Element element) {
+    return WidgetInspectorService.instance.containsErrorElement(element)
+        || element.widget is ErrorWidget;
+  }
+
   bool _shouldShowInSummaryTree(DiagnosticsNode node) {
     if (node.level == DiagnosticLevel.error) {
       return true;
@@ -1552,6 +1557,9 @@ mixin WidgetInspectorService {
     final Object value = node.value;
     if (value is! Diagnosticable) {
       return true;
+    }
+    if (value is Element && _isError(value)) {
+        return true;
     }
     if (value is! Element || !isWidgetCreationTracked()) {
       // Creation locations are not available so include all nodes in the
@@ -1807,6 +1815,39 @@ mixin WidgetInspectorService {
 
   Duration _frameStart;
 
+  final Map<Element, int> _errorElements = Map<Element, int>.identity();
+  List<Element> get errorElements => _errorElements.keys.toList(growable: false);
+
+  bool containsErrorElement(Element errorElement) {
+    return _errorElements.containsKey(errorElement);
+  }
+
+  int getRelativeErrorFromErrorCausingElement(Element errorElement) {
+    if (!_errorElements.containsKey(errorElement)) {
+      return -1;
+    }
+    return _errorElements[errorElement];
+  }
+
+  void addErrorElement(Element element) {
+    _errorElements[element] = 0;
+    print("Adding: ${element}");
+
+    // In the case of the error causing element is not locally created
+    // We should walk up to the tree until we find the locally created one
+    if (!_isLocalCreationLocation(_getCreationLocation(element))) {
+      int id = 1;
+      element.visitAncestorElements((Element ancestor) {
+        if (_isLocalCreationLocation(_getCreationLocation(ancestor))) {
+          _errorElements[ancestor] = 0;
+          return false;
+        }
+        _errorElements[ancestor] = id++;
+        return true;
+      });
+    }
+  }
+
   void _onFrameStart(Duration timeStamp) {
     _frameStart = timeStamp;
     SchedulerBinding.instance.addPostFrameCallback(_onFrameEnd);
@@ -1819,6 +1860,7 @@ mixin WidgetInspectorService {
     if (_trackRepaintWidgets) {
       _postStatsEvent('Flutter.RepaintWidgets', _repaintStats);
     }
+    print('Logging errorElements: ${errorElements}');
   }
 
   void _postStatsEvent(String eventName, _ElementLocationStatsTracker stats) {
@@ -1881,9 +1923,16 @@ mixin WidgetInspectorService {
   /// Do not call this method directly. Instead, use
   /// [BindingBase.reassembleApplication].
   void performReassemble() {
+    clearErrorElements();
     _clearStats();
     _resetErrorCount();
+    FlutterError.resetErrorCount();
   }
+
+  void clearErrorElements() {
+    _errorElements.clear();
+  }
+
 }
 
 /// Accumulator for a count associated with a specific source location.
@@ -2806,6 +2855,11 @@ Iterable<DiagnosticsNode> _describeRelevantUserCode(Element element) {
     ];
   }
   final List<DiagnosticsNode> nodes = <DiagnosticsNode>[];
+  final WidgetInspectorService inspector = WidgetInspectorService.instance;
+
+  // TODO(albertusangga): promote the error-causing widget itself as well as the ancestor
+  inspector.addErrorElement(element);
+
   bool processElement(Element target) {
     // TODO(chunhtai): should print out all the widgets that are about to cross
     // package boundaries.
@@ -2918,6 +2972,10 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
 
   bool get interactive => groupName != null;
 
+  // TODO (albertusangga) - Useful informations:
+  // - Exact information on position / transform
+  // - More information about the constraints
+  // - Whether the widget has an error or not -> Working on this first
   @override
   Map<String, Object> additionalNodeProperties(DiagnosticsNode node) {
     final Map<String, Object> result = <String, Object>{};
@@ -2928,6 +2986,13 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
     }
     if (summaryTree) {
       result['summaryTree'] = true;
+    }
+    if (value is Element) {
+      final WidgetInspectorService inspector = WidgetInspectorService.instance;
+      if (inspector._isError(value)) {
+        result['error'] = true;
+        result['errorPriority'] = inspector.getRelativeErrorFromErrorCausingElement(value);
+      }
     }
     final _Location creationLocation = _getCreationLocation(value);
     if (creationLocation != null) {
