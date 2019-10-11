@@ -1822,7 +1822,7 @@ mixin WidgetInspectorService {
     return _errorElements.containsKey(errorElement);
   }
 
-  int getRelativeErrorFromErrorCausingElement(Element errorElement) {
+  int getRelativeDistanceFromErrorCausingElement(Element errorElement) {
     if (!_errorElements.containsKey(errorElement)) {
       return -1;
     }
@@ -2991,7 +2991,7 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
       final WidgetInspectorService inspector = WidgetInspectorService.instance;
       if (inspector._isError(value)) {
         result['error'] = true;
-        result['errorPriority'] = inspector.getRelativeErrorFromErrorCausingElement(value);
+        result['distanceFromError'] = inspector.getRelativeDistanceFromErrorCausingElement(value);
       }
     }
     final _Location creationLocation = _getCreationLocation(value);
