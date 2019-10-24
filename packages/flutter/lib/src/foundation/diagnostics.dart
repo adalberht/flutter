@@ -1567,7 +1567,7 @@ abstract class DiagnosticsNode {
       if (allowNameWrap)
         'allowNameWrap': allowNameWrap,
       ...delegate.additionalNodeProperties(this),
-      if (delegate.includeProperties)
+       if (delegate.includeProperties)
         'properties': toJsonList(
           delegate.filterProperties(getProperties(), this),
           this,

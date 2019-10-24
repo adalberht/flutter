@@ -1409,6 +1409,16 @@ abstract class RenderObject extends AbstractNode with DiagnosticableTreeMixin im
   Constraints get constraints => _constraints;
   Constraints _constraints;
 
+
+  /// The layout constraints most recently supplied by the parent.
+  /// Only accessible during debug mode
+  Constraints get debugConstraints {
+    if (kReleaseMode)
+      return null;
+    return _constraints;
+  }
+
+
   /// Verify that the object's constraints are being met. Override
   /// this function in a subclass to verify that your state matches
   /// the constraints object. This function is only called in checked
