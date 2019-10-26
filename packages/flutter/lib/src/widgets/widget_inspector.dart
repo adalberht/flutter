@@ -2928,40 +2928,21 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
     }
     if (summaryTree) {
       result['summaryTree'] = true;
-      result['isFlex'] = false;
-      if (value is Element && value.widget is Flex) {
-        result['isFlex'] = true;
-        final Flex flex = value.widget;
-        final RenderFlex render = value.renderObject;
-        result['flex'] = <String, Object>{
-          'direction': flex.direction.toString(),
-          'mainAxisAlignment': flex.mainAxisAlignment.toString(),
-          'mainAxisSize': flex.mainAxisSize.toString(),
-          'crossAxisAlignment': flex.crossAxisAlignment.toString(),
-          'textDirection': flex.textDirection.toString(),
-          'verticalDirection': flex.verticalDirection.toString(),
-          'textBaseline': flex.textBaseline.toString(),
-          'size': <String, Object>{
-            'width': render.size.width,
-            'height': render.size.height,
-          },
-        };
-      }
       if (value is Element) {
         result['shouldHighlightConstraints'] = value.didGetUnconstrainedByParent();
         result['warning'] = value.didUnconstrainOneOfItsChildren();
         final Constraints constraints = value.renderObject?.debugConstraints;
         if (constraints != null) {
           result['constraints'] = constraints.toString();
-// TODO(albertusangga): pass constraints detail to be reformatted
-//          result['constraintsDetails'] = constraints is BoxConstraints ?
-//            <String, Object>{
-//              'minWidth': constraints.minWidth,
-//              'maxWidth': constraints.maxWidth,
-//              'minHeight': constraints.minHeight,
-//              'maxHeight': constraints.maxHeight,
-//            } : null;
         }
+        result['renderObject'] =
+          value.renderObject?.toDiagnosticsNode()?.toJsonMap(
+            copyWith(
+              subtreeDepth: 0,
+              includeProperties: true,
+            ),
+          );
+        result['isFlex'] = value.widget is Flex;
       }
     }
     final _Location creationLocation = _getCreationLocation(value);
