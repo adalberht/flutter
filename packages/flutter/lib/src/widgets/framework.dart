@@ -2627,22 +2627,6 @@ abstract class Element extends DiagnosticableTree implements BuildContext {
     return false;
   }
 
-  // TODO(albertusangga): Create comment
-  ///
-  bool didGetUnconstrainedByParent() {
-    assert(!kReleaseMode);
-    if (_parent == null)
-      return false;
-    final Constraints constraints = renderObject.debugConstraints;
-    if (constraints is BoxConstraints && _parent.renderObject.debugConstraints is BoxConstraints) {
-      final BoxConstraints parentConstraints = _parent.renderObject.debugConstraints;
-      return
-        (!constraints.hasBoundedWidth && parentConstraints.hasBoundedWidth) ||
-        (!constraints.hasBoundedHeight && parentConstraints.hasBoundedHeight);
-    }
-    return false;
-  }
-
   // Custom implementation of `operator ==` optimized for the ".of" pattern
   // used with `InheritedWidgets`.
   @override

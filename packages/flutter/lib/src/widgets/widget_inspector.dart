@@ -2918,6 +2918,49 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
 
   bool get interactive => groupName != null;
 
+  Map<String, Object> _additionalSummaryTreeNodeProperties(DiagnosticsNode summaryTreeNode) {
+    final Map<String, Object> result = <String, Object>{};
+    final Object value = summaryTreeNode.value;
+    if (value is Element) {
+      if (value.didUnconstrainOneOfItsChildren()) {
+        result['warning'] = 'This widget did unconstrain its widgets';
+      }
+      final RenderObject renderObject = value.renderObject;
+      if (renderObject != null) {
+        final Constraints constraints = renderObject.debugConstraints;
+        if (constraints != null) {
+          final Map<String, Object> constraintsProperty = <String, Object>{
+            'type': constraints.runtimeType.toString(),
+            'description': constraints.toString(),
+          };
+          if (constraints is BoxConstraints) {
+            constraintsProperty.addAll(<String, Object>{
+              'hasBoundedHeight': constraints.hasBoundedHeight,
+              'hasBoundedWidth': constraints.hasBoundedWidth,
+              'minWidth': constraints.minWidth,
+              'minHeight': constraints.minHeight,
+            });
+            if (constraints.hasBoundedHeight)
+              constraintsProperty['maxHeight']  = constraints.maxHeight;
+            if (constraints.hasBoundedWidth)
+              constraintsProperty['maxWidth']  = constraints.maxWidth;
+          }
+          // TODO(albertusangga): handle [SliverConstraint]'s case
+          result['constraints'] = constraintsProperty;
+        }
+        result['renderObject'] =
+          renderObject.toDiagnosticsNode()?.toJsonMap(
+            copyWith(
+              subtreeDepth: 0,
+              includeProperties: true,
+            ),
+          );
+        result['isFlex'] = value.widget is Flex;
+      }
+    }
+    return result;
+  }
+
   @override
   Map<String, Object> additionalNodeProperties(DiagnosticsNode node) {
     final Map<String, Object> result = <String, Object>{};
@@ -2928,22 +2971,7 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
     }
     if (summaryTree) {
       result['summaryTree'] = true;
-      if (value is Element) {
-        result['shouldHighlightConstraints'] = value.didGetUnconstrainedByParent();
-        result['warning'] = value.didUnconstrainOneOfItsChildren();
-        final Constraints constraints = value.renderObject?.debugConstraints;
-        if (constraints != null) {
-          result['constraints'] = constraints.toString();
-        }
-        result['renderObject'] =
-          value.renderObject?.toDiagnosticsNode()?.toJsonMap(
-            copyWith(
-              subtreeDepth: 0,
-              includeProperties: true,
-            ),
-          );
-        result['isFlex'] = value.widget is Flex;
-      }
+      result.addAll(_additionalSummaryTreeNodeProperties(node));
     }
     final _Location creationLocation = _getCreationLocation(value);
     if (creationLocation != null) {

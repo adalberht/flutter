@@ -6,6 +6,7 @@ import 'dart:math' as math;
 
 import 'package:meta/meta.dart';
 
+import '../../widgets.dart';
 import 'assertions.dart';
 import 'constants.dart';
 import 'debug.dart';
@@ -1567,7 +1568,7 @@ abstract class DiagnosticsNode {
       if (allowNameWrap)
         'allowNameWrap': allowNameWrap,
       ...delegate.additionalNodeProperties(this),
-       if (delegate.includeProperties)
+      if (delegate.includeProperties)
         'properties': toJsonList(
           delegate.filterProperties(getProperties(), this),
           this,
