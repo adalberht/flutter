@@ -5,7 +5,9 @@
 import 'dart:math' as math;
 import 'dart:ui' show window;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
 import 'button_theme.dart';
@@ -116,6 +118,12 @@ class _DropdownMenuState<T> extends State<_DropdownMenu<T>> {
   CurvedAnimation _fadeOpacity;
   CurvedAnimation _resize;
 
+  // On the web, enter doesn't select things, *except* in a <select>
+  // element, which is what a dropdown emulates.
+  static final Map<LogicalKeySet, Intent> _webShortcuts =<LogicalKeySet, Intent>{
+    LogicalKeySet(LogicalKeyboardKey.enter): const Intent(SelectAction.key),
+  };
+
   @override
   void initState() {
     super.initState();
@@ -159,7 +167,7 @@ class _DropdownMenuState<T> extends State<_DropdownMenu<T>> {
         final double end = (start + 1.5 * unit).clamp(0.0, 1.0);
         opacity = CurvedAnimation(parent: route.animation, curve: Interval(start, end));
       }
-      children.add(FadeTransition(
+      Widget child = FadeTransition(
         opacity: opacity,
         child: InkWell(
           child: Container(
@@ -171,7 +179,16 @@ class _DropdownMenuState<T> extends State<_DropdownMenu<T>> {
             _DropdownRouteResult<T>(route.items[itemIndex].item.value),
           ),
         ),
-      ));
+      );
+      if (kIsWeb) {
+        // On the web, enter doesn't select things, *except* in a <select>
+        // element, which is what a dropdown emulates.
+        child = Shortcuts(
+          shortcuts: _webShortcuts,
+          child: child,
+        );
+      }
+      children.add(child);
     }
 
     return FadeTransition(
@@ -719,7 +736,15 @@ class DropdownButton<T> extends StatefulWidget {
     this.focusColor,
     this.focusNode,
     this.autofocus = false,
-  }) : assert(items == null || items.isEmpty || value == null || items.where((DropdownMenuItem<T> item) => item.value == value).length == 1),
+  }) : assert(items == null || items.isEmpty || value == null ||
+              items.where((DropdownMenuItem<T> item) {
+                return item.value == value;
+              }).length == 1,
+                'There should be exactly one item with [DropdownButton]\'s value: '
+                '$value. \n'
+                'Either zero or 2 or more [DropdownMenuItem]s were detected '
+                'with the same value',
+              ),
        assert(elevation != null),
        assert(iconSize != null),
        assert(isDense != null),
@@ -966,7 +991,10 @@ class _DropdownButtonState<T> extends State<DropdownButton<T>> with WidgetsBindi
     if (widget.focusNode == null) {
       _internalNode ??= _createFocusNode();
     }
-    _actionMap = <LocalKey, ActionFactory>{ ActivateAction.key: _createAction };
+    _actionMap = <LocalKey, ActionFactory>{
+      SelectAction.key: _createAction,
+      if (!kIsWeb) ActivateAction.key: _createAction,
+    };
     focusNode.addListener(_handleFocusChanged);
   }
 
@@ -1287,7 +1315,15 @@ class DropdownButtonFormField<T> extends FormField<T> {
     bool isDense = false,
     bool isExpanded = false,
     double itemHeight,
-  }) : assert(items == null || items.isEmpty || value == null || items.where((DropdownMenuItem<T> item) => item.value == value).length == 1),
+  }) : assert(items == null || items.isEmpty || value == null ||
+              items.where((DropdownMenuItem<T> item) {
+                return item.value == value;
+              }).length == 1,
+                'There should be exactly one item with [DropdownButton]\'s value: '
+                '$value. \n'
+                'Either zero or 2 or more [DropdownMenuItem]s were detected '
+                'with the same value',
+              ),
        assert(decoration != null),
        assert(elevation != null),
        assert(iconSize != null),
