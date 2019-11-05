@@ -64,7 +64,7 @@ final Map<Type, Generator> _testbedDefaults = <Type, Generator>{
 ///           });
 ///         })
 ///
-///         test('Can delete a file', () => testBed.run(() {
+///         test('Can delete a file', () => testbed.run(() {
 ///           expect(fs.file('foo').existsSync(), true);
 ///           fs.file('foo').deleteSync();
 ///           expect(fs.file('foo').existsSync(), false);
@@ -90,7 +90,7 @@ class Testbed {
   ///
   /// `overrides` may be used to provide new context values for the single test
   /// case or override any context values from the setup.
-  FutureOr<T> run<T>(FutureOr<T> Function() test, {Map<Type, Generator> overrides}) {
+  Future<T> run<T>(FutureOr<T> Function() test, {Map<Type, Generator> overrides}) {
     final Map<Type, Generator> testOverrides = <Type, Generator>{
       ..._testbedDefaults,
       // Add the initial setUp overrides
