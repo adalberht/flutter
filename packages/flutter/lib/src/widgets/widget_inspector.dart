@@ -2948,6 +2948,12 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
           // TODO(albertusangga): handle [SliverConstraint]'s case
           result['constraints'] = constraintsProperty;
         }
+        if (renderObject is RenderBox) {
+          final Map<String, Object> sizeProperty = <String, Object>{};
+          sizeProperty['width'] = renderObject.size.width;
+          sizeProperty['height'] = renderObject.size.height;
+          result['size'] = sizeProperty;
+        }
         result['renderObject'] =
           renderObject.toDiagnosticsNode()?.toJsonMap(
             copyWith(
