@@ -2953,6 +2953,11 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
           sizeProperty['width'] = renderObject.size.width;
           sizeProperty['height'] = renderObject.size.height;
           result['size'] = sizeProperty;
+
+          final ParentData parentData = renderObject.parentData;
+          if (parentData is FlexParentData) {
+            result['flexFactor'] = parentData.flex;
+          }
         }
         result['renderObject'] =
           renderObject.toDiagnosticsNode()?.toJsonMap(
@@ -2961,7 +2966,9 @@ class _SerializationDelegate implements DiagnosticsSerializationDelegate {
               includeProperties: true,
             ),
           );
-        result['isFlex'] = value.widget is Flex;
+        if (value.widget is Flex) {
+          result['isFlex'] = value.widget is Flex;
+        }
       }
     }
     return result;
