@@ -27,6 +27,10 @@ import 'reporting/reporting.dart';
 import 'resident_runner.dart';
 import 'vmservice.dart';
 
+ProjectFileInvalidator get projectFileInvalidator => context.get<ProjectFileInvalidator>() ?? const ProjectFileInvalidator();
+
+HotRunnerConfig get hotRunnerConfig => context.get<HotRunnerConfig>();
+
 class HotRunnerConfig {
   /// Should the hot runner assume that the minimal Dart dependencies do not change?
   bool stableDartDependencies = false;
@@ -45,8 +49,6 @@ class HotRunnerConfig {
     return;
   }
 }
-
-HotRunnerConfig get hotRunnerConfig => context.get<HotRunnerConfig>();
 
 const bool kHotReloadDefault = true;
 
@@ -301,7 +303,7 @@ class HotRunner extends ResidentRunner {
 
     // Picking up first device's compiler as a source of truth - compilers
     // for all devices should be in sync.
-    final List<Uri> invalidatedFiles = await ProjectFileInvalidator.findInvalidated(
+    final List<Uri> invalidatedFiles = await projectFileInvalidator.findInvalidated(
       lastCompiled: flutterDevices[0].devFS.lastCompiled,
       urisToMonitor: flutterDevices[0].devFS.sources,
       packagesPath: packagesFilePath,
@@ -494,8 +496,8 @@ class HotRunner extends ResidentRunner {
            (reloadReport['success'] == false &&
             (reloadReport['details'] is Map<String, dynamic> &&
              reloadReport['details']['notices'] is List<dynamic> &&
-             reloadReport['details']['notices'].isNotEmpty &&
-             reloadReport['details']['notices'].every(
+             (reloadReport['details']['notices'] as List<dynamic>).isNotEmpty &&
+             (reloadReport['details']['notices'] as List<dynamic>).every(
                (dynamic item) => item is Map<String, dynamic> && item['message'] is String
              )
             )
@@ -507,7 +509,7 @@ class HotRunner extends ResidentRunner {
       }
       return false;
     }
-    if (!reloadReport['success']) {
+    if (!(reloadReport['success'] as bool)) {
       if (printErrors) {
         printError('Hot reload was rejected:');
         for (Map<String, dynamic> notice in reloadReport['details']['notices']) {
@@ -752,16 +754,16 @@ class HotRunner extends ResidentRunner {
         // Collect stats only from the first device. If/when run -d all is
         // refactored, we'll probably need to send one hot reload/restart event
         // per device to analytics.
-        firstReloadDetails ??= reloadReport['details'];
-        final int loadedLibraryCount = reloadReport['details']['loadedLibraryCount'];
-        final int finalLibraryCount = reloadReport['details']['finalLibraryCount'];
+        firstReloadDetails ??= castStringKeyedMap(reloadReport['details']);
+        final int loadedLibraryCount = reloadReport['details']['loadedLibraryCount'] as int;
+        final int finalLibraryCount = reloadReport['details']['finalLibraryCount'] as int;
         printTrace('reloaded $loadedLibraryCount of $finalLibraryCount libraries');
         reloadMessage = 'Reloaded $loadedLibraryCount of $finalLibraryCount libraries';
       }
     } on Map<String, dynamic> catch (error, stackTrace) {
       printTrace('Hot reload failed: $error\n$stackTrace');
-      final int errorCode = error['code'];
-      String errorMessage = error['message'];
+      final int errorCode = error['code'] as int;
+      String errorMessage = error['message'] as String;
       if (errorCode == Isolate.kIsolateReloadBarred) {
         errorMessage = 'Unable to hot reload application due to an unrecoverable error in '
                        'the source code. Please address the error and then use "R" to '
@@ -903,10 +905,10 @@ class HotRunner extends ResidentRunner {
       fullRestart: false,
       reason: reason,
       overallTimeInMs: reloadInMs,
-      finalLibraryCount: firstReloadDetails['finalLibraryCount'],
-      syncedLibraryCount: firstReloadDetails['receivedLibraryCount'],
-      syncedClassesCount: firstReloadDetails['receivedClassesCount'],
-      syncedProceduresCount: firstReloadDetails['receivedProceduresCount'],
+      finalLibraryCount: firstReloadDetails['finalLibraryCount'] as int,
+      syncedLibraryCount: firstReloadDetails['receivedLibraryCount'] as int,
+      syncedClassesCount: firstReloadDetails['receivedClassesCount'] as int,
+      syncedProceduresCount: firstReloadDetails['receivedProceduresCount'] as int,
       syncedBytes: updatedDevFS.syncedBytes,
       invalidatedSourcesCount: updatedDevFS.invalidatedSourcesCount,
       transferTimeInMs: devFSTimer.elapsed.inMilliseconds,
@@ -1047,6 +1049,8 @@ class HotRunner extends ResidentRunner {
 }
 
 class ProjectFileInvalidator {
+  const ProjectFileInvalidator();
+
   static const String _pubCachePathLinuxAndMac = '.pub-cache';
   static const String _pubCachePathWindows = 'Pub/Cache';
 
@@ -1058,7 +1062,7 @@ class ProjectFileInvalidator {
   // ~2000 files.
   static const int _kMaxPendingStats = 8;
 
-  static Future<List<Uri>> findInvalidated({
+  Future<List<Uri>> findInvalidated({
     @required DateTime lastCompiled,
     @required List<Uri> urisToMonitor,
     @required String packagesPath,
